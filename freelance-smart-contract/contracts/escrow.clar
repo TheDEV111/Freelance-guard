@@ -33,6 +33,18 @@
 ;; Data Variables
 (define-data-var escrow-nonce uint u0)
 
+;; Helper Functions for Enhanced Validation
+
+;; Validate string is not empty
+(define-private (is-valid-string (str (string-ascii 256)))
+  (> (len str) u0)
+)
+
+;; Check if deadline is in the future
+(define-private (is-future-deadline (deadline uint))
+  (> deadline stacks-block-height)
+)
+
 ;; Data Maps
 (define-map escrows
   uint
@@ -143,6 +155,7 @@
       (escrow-id (+ (var-get escrow-nonce) u1))
     )
     (asserts! (> total-amount u0) ERR-INVALID-AMOUNT)
+    (asserts! (is-valid-string metadata) ERR-INVALID-AMOUNT)
     
     ;; Transfer funds from client to contract
     (try! (stx-transfer? total-amount tx-sender (as-contract tx-sender)))
@@ -155,7 +168,7 @@
       total-amount: total-amount,
       paid-amount: u0,
       status: STATUS-ACTIVE,
-      created-at: block-height,
+      created-at: stacks-block-height,
       metadata: metadata
     })
     
@@ -197,6 +210,12 @@
     
     ;; Amount must be valid
     (asserts! (> amount u0) ERR-INVALID-AMOUNT)
+    
+    ;; Validate label is not empty (Clarity 4 string validation)
+    (asserts! (> (len label) u0) ERR-INVALID-AMOUNT)
+    
+    ;; Validate deadline is in the future
+    (asserts! (is-future-deadline deadline) ERR-INVALID-AMOUNT)
     
     ;; Create milestone
     (map-set milestones 
@@ -248,13 +267,16 @@
       (is-eq (get status milestone) MILESTONE-REJECTED)
     ) ERR-ALREADY-SUBMITTED)
     
+    ;; Validate deliverable is not empty (Clarity 4 string validation)
+    (asserts! (> (len deliverable) u0) ERR-INVALID-AMOUNT)
+    
     ;; Update milestone with deliverable
     (map-set milestones 
       { escrow-id: escrow-id, milestone-id: milestone-id }
       (merge milestone {
         status: MILESTONE-SUBMITTED,
         deliverable: (some deliverable),
-        submitted-at: (some block-height)
+        submitted-at: (some stacks-block-height)
       })
     )
     
@@ -294,7 +316,7 @@
       { escrow-id: escrow-id, milestone-id: milestone-id }
       (merge milestone {
         status: MILESTONE-APPROVED,
-        approved-at: (some block-height)
+        approved-at: (some stacks-block-height)
       })
     )
     
@@ -395,6 +417,9 @@
       (is-eq (get status milestone) MILESTONE-REJECTED)
     ) ERR-INVALID-MILESTONE)
     
+    ;; Validate reason is not empty (Clarity 4 string validation)
+    (asserts! (> (len reason) u0) ERR-INVALID-AMOUNT)
+    
     ;; Create dispute
     (map-set disputes escrow-id {
       raised-by: tx-sender,
@@ -449,12 +474,15 @@
     ;; Dispute must not be resolved
     (asserts! (not (get resolved dispute)) ERR-NO-DISPUTE)
     
+    ;; Validate resolution is not empty (Clarity 4 string validation)
+    (asserts! (> (len resolution) u0) ERR-INVALID-AMOUNT)
+    
     ;; Update dispute
     (map-set disputes escrow-id
       (merge dispute {
         resolved: true,
         resolution: (some resolution),
-        resolved-at: (some block-height)
+        resolved-at: (some stacks-block-height)
       })
     )
     
@@ -469,7 +497,7 @@
           { escrow-id: escrow-id, milestone-id: (get milestone-id dispute) }
           (merge milestone {
             status: MILESTONE-APPROVED,
-            approved-at: (some block-height)
+            approved-at: (some stacks-block-height)
           })
         )
         

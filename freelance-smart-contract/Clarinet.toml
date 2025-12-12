@@ -1,13 +1,13 @@
 [project]
 name = "freelance-smart-contract"
 description = "FreelanceGuard - Decentralized milestone-based escrow for freelancers"
-authors = []
+authors = ["Henry Agukwe"]
 telemetry = true
 cache_dir = "./.cache"
 
 [contracts.escrow]
 path = "contracts/escrow.clar"
-epoch = "3.0"
+epoch = "3.3"
 
 [repl.analysis]
 passes = ["check_checker"]
