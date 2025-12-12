@@ -49,5 +49,12 @@ export const getUserData = () => {
 export const getUserAddress = () => {
   if (!isUserSignedIn()) return null;
   const userData = getUserData();
-  return userData.profile.stxAddress.testnet || userData.profile.stxAddress.mainnet;
+  
+  // Get the network from localStorage to determine which address to use
+  const network = (typeof window !== 'undefined' ? localStorage.getItem('network') : null) || 'testnet';
+  
+  if (network === 'mainnet') {
+    return userData.profile.stxAddress.mainnet;
+  }
+  return userData.profile.stxAddress.testnet;
 };
