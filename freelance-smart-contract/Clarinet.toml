@@ -7,7 +7,7 @@ cache_dir = "./.cache"
 
 [contracts.escrow]
 path = "contracts/escrow.clar"
-epoch = "3.3"
+epoch = "3.0"
 
 [repl.analysis]
 passes = ["check_checker"]
