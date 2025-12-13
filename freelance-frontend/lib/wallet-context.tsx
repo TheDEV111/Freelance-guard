@@ -6,14 +6,14 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { userSession, connectWallet, disconnectWallet, getUserAddress } from '@/lib/wallet';
+import { connectWallet, disconnectWallet, isWalletConnected, getCurrentAddress } from '@/lib/wallet';
 import { NetworkType } from '@/lib/stacks-config';
 
 interface WalletContextType {
   isConnected: boolean;
   address: string | null;
   network: NetworkType;
-  connect: () => void;
+  connect: () => Promise<void>;
   disconnect: () => void;
   switchNetwork: (network: NetworkType) => void;
   loading: boolean;
@@ -23,7 +23,7 @@ const WalletContext = createContext<WalletContextType>({
   isConnected: false,
   address: null,
   network: 'testnet',
-  connect: () => {},
+  connect: async () => {},
   disconnect: () => {},
   switchNetwork: () => {},
   loading: true,
@@ -38,18 +38,16 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is already signed in
+    // Check if wallet is already connected
     const checkConnection = () => {
-      if (userSession.isUserSignedIn()) {
-        setIsConnected(true);
-        const userAddress = getUserAddress();
-        setAddress(userAddress);
-      }
+      const connected = isWalletConnected();
+      setIsConnected(connected);
       
-      // Load network preference from localStorage
-      const savedNetwork = localStorage.getItem('network') as NetworkType;
-      if (savedNetwork && (savedNetwork === 'testnet' || savedNetwork === 'mainnet')) {
+      if (connected) {
+        const savedNetwork = (localStorage.getItem('network') as NetworkType) || 'testnet';
         setNetwork(savedNetwork);
+        const userAddress = getCurrentAddress(savedNetwork);
+        setAddress(userAddress);
       }
       
       setLoading(false);
@@ -58,17 +56,18 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     checkConnection();
   }, []);
 
-  const connect = () => {
-    connectWallet({
-      onFinish: () => {
-        // Manually update state after connection
-        if (userSession.isUserSignedIn()) {
-          setIsConnected(true);
-          const userAddress = getUserAddress();
-          setAddress(userAddress);
-        }
-      },
-    });
+  const connect = async () => {
+    try {
+      await connectWallet(network);
+      
+      // Update state after successful connection
+      setIsConnected(true);
+      const userAddress = getCurrentAddress(network);
+      setAddress(userAddress);
+    } catch (error) {
+      console.error('Connection error:', error);
+      throw error;
+    }
   };
 
   const disconnect = () => {
@@ -80,6 +79,12 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const switchNetwork = (newNetwork: NetworkType) => {
     setNetwork(newNetwork);
     localStorage.setItem('network', newNetwork);
+    
+    // Update address for new network if connected
+    if (isConnected) {
+      const userAddress = getCurrentAddress(newNetwork);
+      setAddress(userAddress);
+    }
   };
 
   return (

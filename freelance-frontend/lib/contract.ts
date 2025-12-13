@@ -4,7 +4,6 @@
  */
 
 import {
-  makeContractCall,
   AnchorMode,
   PostConditionMode,
   stringAsciiCV,
@@ -12,9 +11,11 @@ import {
   principalCV,
   callReadOnlyFunction,
   cvToJSON,
+  ClarityValue,
 } from '@stacks/transactions';
+import { request } from '@stacks/connect';
 import { getNetworkConfig, NetworkType } from './stacks-config';
-import { userSession } from './wallet';
+import { getCurrentAddress } from './wallet';
 
 /**
  * Create a new escrow agreement
@@ -29,8 +30,13 @@ export const createEscrow = async (
   network: NetworkType = 'testnet'
 ) => {
   const config = getNetworkConfig(network);
+  const senderAddress = getCurrentAddress(network);
 
-  const txOptions = {
+  if (!senderAddress) {
+    throw new Error('Wallet not connected');
+  }
+
+  const result = await request('stx_callContract', {
     contractAddress: config.contractAddress,
     contractName: config.contractName,
     functionName: 'create-escrow',
@@ -42,18 +48,13 @@ export const createEscrow = async (
       uintCV(totalAmount),
       uintCV(deadline),
     ],
-    network: config.network,
+    network,
     anchorMode: AnchorMode.Any,
     postConditionMode: PostConditionMode.Deny,
-    onFinish: (data: any) => {
-      console.log('Transaction broadcast:', data);
-    },
-    onCancel: () => {
-      console.log('Transaction cancelled');
-    },
-  };
+    stxAddress: senderAddress,
+  });
 
-  return makeContractCall(txOptions);
+  return result;
 };
 
 /**
