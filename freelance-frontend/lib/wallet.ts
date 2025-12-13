@@ -19,12 +19,15 @@ export const connectWallet = (options?: AuthOptions) => {
   showConnect({
     appDetails: {
       name: 'FreelanceGuard',
-      icon: '/logo.png',
+      icon: typeof window !== 'undefined' ? `${window.location.origin}/logo.png` : '/logo.png',
     },
     redirectTo: '/',
-    onFinish: (payload) => {
+    onFinish: (payload: any) => {
       console.log('Wallet connected:', payload);
-      options?.onFinish?.(payload);
+      // Trigger a state update instead of full page reload
+      if (options?.onFinish) {
+        options.onFinish(payload);
+      }
     },
     onCancel: () => {
       console.log('Wallet connection cancelled');

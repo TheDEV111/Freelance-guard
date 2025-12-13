@@ -61,9 +61,12 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const connect = () => {
     connectWallet({
       onFinish: () => {
-        setIsConnected(true);
-        const userAddress = getUserAddress();
-        setAddress(userAddress);
+        // Manually update state after connection
+        if (userSession.isUserSignedIn()) {
+          setIsConnected(true);
+          const userAddress = getUserAddress();
+          setAddress(userAddress);
+        }
       },
     });
   };
